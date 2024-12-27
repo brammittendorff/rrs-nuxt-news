@@ -2,6 +2,13 @@
   <div class="container mt-4">
     <h1 class="text-center mb-5">RSS Feeds</h1>
     
+    <!-- Clear Cache Button -->
+    <div class="text-end mb-4">
+      <button class="btn btn-sm btn-danger" @click="clearCache">
+        Clear Cache
+      </button>
+    </div>
+
     <!-- Search Bars Row -->
     <div class="row mb-4 g-3">
         <!-- Source Filter -->
@@ -100,7 +107,7 @@
         </div>
     </div>
 
-    <!-- Selected Tags Display -->
+    <!-- Selected Tags Display (unchanged) -->
     <div v-if="selectedTags.length" class="mb-4">
       <div class="d-flex flex-wrap gap-2">
         <span 
@@ -191,7 +198,7 @@
       </table>
     </div>
 
-    <!-- No Results Message -->
+    <!-- No Results Message (unchanged) -->
     <div v-if="!loading && filteredItems.length === 0 && rssItems.length > 0" 
          class="alert alert-info text-center">
       No items match the current filters and search criteria.
@@ -233,6 +240,7 @@ export default {
 
   data() {
     return {
+      selectedSource: '', // Define with a default value
       rssItems: [],
       loading: true,
       error: null,
@@ -351,6 +359,12 @@ export default {
   },
 
   methods: {
+    clearCache() {
+      localStorage.clear();
+      this.rssItems = [];
+      this.fetchAllFeeds();
+    },
+
     normalizeTag(tag) {
         const tagLower = tag.toLowerCase()
         for (const [category, config] of Object.entries(TAG_CATEGORIES)) {
@@ -429,19 +443,19 @@ export default {
     },
 
     async fetchAllFeeds() {
-        this.loading = true
-        this.error = null
-        this.rssItems = []
-        try {
-            const feedPromises = this.sources.map(feed => this.fetchFeed(feed))
-            const results = await Promise.all(feedPromises)
-            this.rssItems = results.flat()
-        } catch (err) {
-            this.error = `Error fetching feeds: ${err.message}`
-            console.error('Error fetching feeds:', err)
-        } finally {
-            this.loading = false
-        }
+      this.loading = true;
+      this.error = null;
+      this.rssItems = [];
+      try {
+        const feedPromises = this.sources.map(feed => this.fetchFeed(feed));
+        const results = await Promise.all(feedPromises);
+        this.rssItems = results.flat();
+      } catch (err) {
+        this.error = `Error fetching feeds: ${err.message}`;
+        console.error('Error fetching feeds:', err);
+      } finally {
+        this.loading = false;
+      }
     },
 
     async fetchFeed(feed) {

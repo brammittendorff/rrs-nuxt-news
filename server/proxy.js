@@ -12,6 +12,7 @@ app.use(cors())
 
 // Global variable to store tags being processed
 const tagsInProgress = new Map()
+const cachedTags = new Map(); // In-memory cache for processed tags
 
 // Middleware to check for API Key
 app.use((req, res, next) => {
@@ -73,9 +74,21 @@ async function processTags(items, feedUrl) {
   const MAX_BATCH_SIZE = 10;
   const TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
-  const contentArray = items.map(item => `${item.title} ${item.description}`);
-  const batches = [];
+  // Prepare content array and batches for untagged items
+  const contentArray = [];
+  const untaggedItems = [];
 
+  items.forEach(item => {
+    const cacheKey = `${feedUrl}:${item.title}`;
+    if (cachedTags.has(cacheKey)) {
+      item.tags = cachedTags.get(cacheKey);
+    } else {
+      contentArray.push(`${item.title} ${item.description}`);
+      untaggedItems.push(item);
+    }
+  });
+
+  const batches = [];
   for (let i = 0; i < contentArray.length; i += MAX_BATCH_SIZE) {
     batches.push(contentArray.slice(i, i + MAX_BATCH_SIZE));
   }
@@ -119,16 +132,15 @@ async function processTags(items, feedUrl) {
             .split('\n')
             .map(line => line.split(',').map(tag => tag.trim()));
 
-          // Update tags for this batch
+          // Update tags for this batch and cache them
           const startIdx = batchIndex * MAX_BATCH_SIZE;
           tags.forEach((tagList, idx) => {
-            if (items[startIdx + idx]) {
-              items[startIdx + idx].tags = tagList;
+            if (untaggedItems[startIdx + idx]) {
+              untaggedItems[startIdx + idx].tags = tagList;
+              const cacheKey = `${feedUrl}:${untaggedItems[startIdx + idx].title}`;
+              cachedTags.set(cacheKey, tagList); // Cache tags
             }
           });
-
-          // Update cache after each batch
-          tagsInProgress.set(feedUrl, items);
 
           return tags;
         } catch (error) {
@@ -140,8 +152,20 @@ async function processTags(items, feedUrl) {
 
     // Race between processing and timeout
     await Promise.race([processPromise, timeoutPromise]);
-    
-    return items;
+
+    // Merge tagged items into the original list
+    const updatedItems = items.map(item => {
+      if (!item.tags.length) {
+        const cacheKey = `${feedUrl}:${item.title}`;
+        item.tags = cachedTags.get(cacheKey) || [];
+      }
+      return item;
+    });
+
+    // Update the global cache
+    tagsInProgress.set(feedUrl, updatedItems);
+
+    return updatedItems;
   } catch (error) {
     console.error('Error or timeout in tag processing:', error);
     return items;
