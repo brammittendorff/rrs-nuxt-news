@@ -349,171 +349,161 @@ export default {
       clearTimeout(this.tagTimeoutTimer)
     }
   },
+
   methods: {
+    normalizeTag(tag) {
+        const tagLower = tag.toLowerCase()
+        for (const [category, config] of Object.entries(TAG_CATEGORIES)) {
+            if (config.aliases && config.aliases[tagLower]) {
+                return config.aliases[tagLower]
+            }
+            if (config.keywords && config.keywords.some(k => tagLower.includes(k))) {
+                return config.keywords.find(k => tagLower.includes(k))
+            }
+        }
+        return tag
+    },
+
     filterTagsBySearch(tags) {
-      if (!this.tagSearchQuery.trim()) return tags
-      const query = this.tagSearchQuery.toLowerCase().trim()
-      return tags.filter(tag => tag.toLowerCase().includes(query))
+        if (!this.tagSearchQuery.trim()) return tags
+        const query = this.tagSearchQuery.toLowerCase().trim()
+        return tags.filter(tag => this.normalizeTag(tag).toLowerCase().includes(query))
     },
 
     generateColorFromString(str) {
-      let hash = 0
-      for (let i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash)
-      }
-      const hue = Math.abs(hash % 360)
-      return `hsl(${hue}, 65%, 45%)`
+        let hash = 0
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash)
+        }
+        const hue = Math.abs(hash % 360)
+        return `hsl(${hue}, 65%, 45%)`
     },
 
     getTagStyle(tag) {
-      const backgroundColor = this.generateColorFromString(tag)
-      return {
-        backgroundColor,
-        color: '#ffffff',
-        transition: 'opacity 0.2s'
-      }
+        const backgroundColor = this.generateColorFromString(this.normalizeTag(tag))
+        return {
+            backgroundColor,
+            color: '#ffffff',
+            transition: 'opacity 0.2s'
+        }
     },
 
     handleTagClick(event, tag) {
-      event.stopPropagation()
-      this.toggleTagFilter(tag)
+        event.stopPropagation()
+        this.toggleTagFilter(tag)
     },
 
     handleDropdownClick(event) {
-      event.stopPropagation()
+        event.stopPropagation()
     },
 
     handleEscape(event) {
-      if (event.key === 'Escape') {
-        this.showTagDropdown = false
-      }
+        if (event.key === 'Escape') {
+            this.showTagDropdown = false
+        }
     },
 
     handleClickOutside(event) {
-      const dropdown = this.$refs.tagDropdown
-      const input = this.$refs.tagInput
-      
-      if (!dropdown?.contains(event.target) && !input?.contains(event.target)) {
-        this.showTagDropdown = false
-      }
-    },
-
-    closeDropdown(event) {
-      if (!this.$refs.tagInput?.contains(event.target) && 
-          !this.$refs.tagDropdown?.contains(event.target)) {
-        this.showTagDropdown = false
-      }
-    },
-
-    toggleTagFilter(tag) {
-      const index = this.selectedTags.indexOf(tag)
-      if (index === -1) {
-        this.selectedTags.push(tag)
-      } else {
-        this.selectedTags.splice(index, 1)
-      }
+        const dropdown = this.$refs.tagDropdown
+        const input = this.$refs.tagInput
+        if (!dropdown?.contains(event.target) && !input?.contains(event.target)) {
+            this.showTagDropdown = false
+        }
     },
 
     clearFilters() {
         this.selectedTags = []
         this.searchQuery = ''
         this.tagSearchQuery = ''
-        this.selectedSource = '' // Add this line
+        this.selectedSource = ''
     },
 
     toggleTagFilter(tag) {
-      const index = this.selectedTags.indexOf(tag)
-      if (index === -1) {
-        this.selectedTags.push(tag)
-      } else {
-        this.selectedTags.splice(index, 1)
-      }
+        const normalizedTag = this.normalizeTag(tag)
+        const index = this.selectedTags.findIndex(t => this.normalizeTag(t) === normalizedTag)
+        if (index === -1) {
+            this.selectedTags.push(tag)
+        } else {
+            this.selectedTags.splice(index, 1)
+        }
     },
 
     async fetchAllFeeds() {
-      this.loading = true;
-      this.error = null;
-      this.rssItems = [];
-
-      try {
-        for (const feed of this.sources) {
-          const items = await this.fetchFeed(feed);
-          this.rssItems.push(...items);
+        this.loading = true
+        this.error = null
+        this.rssItems = []
+        try {
+            const feedPromises = this.sources.map(feed => this.fetchFeed(feed))
+            const results = await Promise.all(feedPromises)
+            this.rssItems = results.flat()
+        } catch (err) {
+            this.error = `Error fetching feeds: ${err.message}`
+            console.error('Error fetching feeds:', err)
+        } finally {
+            this.loading = false
         }
-      } catch (err) {
-        this.error = `Error fetching feeds: ${err.message}`;
-        console.error('Error fetching feeds:', err);
-      } finally {
-        this.loading = false;
-      }
     },
 
     async fetchFeed(feed) {
-      const proxyUrl = `${process.env.PROXY_URL || 'http://localhost:3001'}/rss`;
-      try {
-        const response = await fetch(`${proxyUrl}?url=${encodeURIComponent(feed.url)}`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        
-        const items = await response.json();
-        return items.map(item => ({
-          ...item,
-          source: feed.source,
-          tags: item.tags || []
-        }));
-      } catch (error) {
-        console.error(`Error fetching ${feed.source}:`, error);
-        throw error;
-      }
+        const proxyUrl = `${process.env.PROXY_URL || 'http://localhost:3001'}/rss`
+        try {
+            const response = await fetch(`${proxyUrl}?url=${encodeURIComponent(feed.url)}`)
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+            const items = await response.json()
+            return items.map(item => ({
+                ...item,
+                source: feed.source,
+                tags: item.tags?.map(tag => this.normalizeTag(tag)) || []
+            }))
+        } catch (error) {
+            console.error(`Error fetching ${feed.source}:`, error)
+            throw error
+        }
     },
 
     startPollingForTags() {
-      let attempts = 0;
-      const maxAttempts = 60; // 5 minutes with 5-second intervals
+        let attempts = 0
+        const maxAttempts = 60
 
-      this.pollingInterval = setInterval(async () => {
-        attempts++;
-        if (attempts >= maxAttempts) {
-          clearInterval(this.pollingInterval);
-          this.tagLoadingTimeout = true;
-          return;
-        }
-
-        const proxyUrl = `${process.env.PROXY_URL || 'http://localhost:3001'}/rss`;
-        
-        for (const feed of this.sources) {
-          try {
-            const response = await fetch(`${proxyUrl}?url=${encodeURIComponent(feed.url)}&tagsOnly=true`);
-            if (!response.ok) continue;
-
-            const updatedItems = await response.json();
-            
-            this.rssItems = this.rssItems.map(item => {
-              const updatedItem = updatedItems.find(u => u.title === item.title);
-              return updatedItem ? { ...item, tags: updatedItem.tags } : item;
-            });
-
-            if (this.rssItems.every(item => item.tags && item.tags.length > 0)) {
-              clearInterval(this.pollingInterval);
-              if (this.tagTimeoutTimer) {
-                clearTimeout(this.tagTimeoutTimer);
-              }
+        this.pollingInterval = setInterval(async () => {
+            attempts++
+            if (attempts >= maxAttempts) {
+                clearInterval(this.pollingInterval)
+                this.tagLoadingTimeout = true
+                return
             }
-          } catch (error) {
-            console.error('Error polling for tags:', error);
-          }
-        }
-      }, 5000);
-    },
 
-    toggleTagFilter(tag) {
-      const index = this.selectedTags.indexOf(tag);
-      if (index === -1) {
-        this.selectedTags.push(tag);
-      } else {
-        this.selectedTags.splice(index, 1);
-      }
+            const proxyUrl = `${process.env.PROXY_URL || 'http://localhost:3001'}/rss`
+            
+            for (const feed of this.sources) {
+                try {
+                    const response = await fetch(`${proxyUrl}?url=${encodeURIComponent(feed.url)}&tagsOnly=true`)
+                    if (!response.ok) continue
+
+                    const updatedItems = await response.json()
+                    
+                    this.rssItems = this.rssItems.map(item => {
+                        const updatedItem = updatedItems.find(u => u.title === item.title)
+                        return updatedItem ? { 
+                            ...item, 
+                            tags: updatedItem.tags?.map(tag => this.normalizeTag(tag)) || [] 
+                        } : item
+                    })
+
+                    if (this.rssItems.every(item => item.tags && item.tags.length > 0)) {
+                        clearInterval(this.pollingInterval)
+                        if (this.tagTimeoutTimer) {
+                            clearTimeout(this.tagTimeoutTimer)
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error polling for tags:', error)
+                }
+            }
+        }, 5000)
     }
-  }
+}
+
 }
 </script>
 
