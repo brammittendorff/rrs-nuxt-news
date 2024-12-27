@@ -93,3 +93,5 @@ To add more sources, modify the `sources` array in `pages/index.vue`.
 - Tag search functionality
 - Clear filters option
 - Article count display
+
+![RSS Feed Reader Interface](rss.png)
