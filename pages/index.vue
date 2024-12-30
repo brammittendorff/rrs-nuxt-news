@@ -1,126 +1,80 @@
 <template>
   <div class="container mt-4">
     <h1 class="text-center mb-5">RSS Feeds</h1>
-    
-    <!-- Clear Cache Button -->
-    <div class="text-end mb-4">
-      <button class="btn btn-sm btn-danger" @click="clearCache">
-        Clear Cache
-      </button>
-    </div>
 
     <!-- Search Bars Row -->
     <div class="row mb-4 g-3">
-        <!-- Source Filter -->
-        <div class="col-md-2">
-            <div class="input-group">
+      <!-- Source Filter -->
+      <div class="col-md-2">
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="bi bi-funnel"></i>
+          </span>
+          <select class="form-select" v-model="selectedSource" @change="handleSourceChange">
+            <option value="">All Sources</option>
+            <option v-for="source in uniqueSources" :key="source" :value="source">
+              {{ source }}
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Title Search -->
+      <div class="col-md-4">
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="bi bi-search"></i>
+          </span>
+          <input type="text" class="form-control" v-model="searchQuery" placeholder="Search in titles...">
+        </div>
+      </div>
+
+      <!-- Tag Search with Dropdown -->
+      <div class="col-md-6">
+        <div class="position-relative">
+          <div class="input-group">
             <span class="input-group-text">
-                <i class="bi bi-funnel"></i>
+              <i class="bi bi-tags"></i>
             </span>
-            <select 
-                class="form-select" 
-                v-model="selectedSource"
-                @change="handleSourceChange"
-            >
-                <option value="">All Sources</option>
-                <option 
-                v-for="source in uniqueSources" 
-                :key="source" 
-                :value="source"
-                >
-                {{ source }}
-                </option>
-            </select>
-            </div>
-        </div>
+            <input type="text" class="form-control" v-model="tagSearchQuery" placeholder="Search tags..."
+              @focus="showTagDropdown = true" @click="showTagDropdown = true" ref="tagInput">
+            <button v-if="selectedTags.length" class="btn btn-outline-secondary" @click="clearFilters" type="button">
+              Clear
+            </button>
+          </div>
 
-        <!-- Title Search -->
-        <div class="col-md-4">
-            <div class="input-group">
-            <span class="input-group-text">
-                <i class="bi bi-search"></i>
-            </span>
-            <input 
-                type="text" 
-                class="form-control" 
-                v-model="searchQuery" 
-                placeholder="Search in titles..."
-            >
-            </div>
-        </div>
-
-        <!-- Tag Search with Dropdown -->
-        <div class="col-md-6">
-            <div class="position-relative">
-            <div class="input-group">
-                <span class="input-group-text">
-                <i class="bi bi-tags"></i>
-                </span>
-                <input 
-                type="text" 
-                class="form-control" 
-                v-model="tagSearchQuery" 
-                placeholder="Search tags..."
-                @focus="showTagDropdown = true"
-                @click="showTagDropdown = true"
-                ref="tagInput"
-                >
-                <button 
-                v-if="selectedTags.length" 
-                class="btn btn-outline-secondary" 
-                @click="clearFilters"
-                type="button"
-                >
-                Clear
-                </button>
-            </div>
-
-            <!-- Tag Dropdown -->
-            <div 
-                v-show="showTagDropdown" 
-                class="tag-dropdown card"
-                ref="tagDropdown"
-                @click="handleDropdownClick"
-            >
-                <div class="card-body p-0">
-                <div v-for="(tags, category) in groupedTags" 
-                    :key="category" 
-                    class="p-2 border-bottom">
-                    <div class="category-header mb-2">{{ category }}</div>
-                    <div class="d-flex flex-wrap gap-1">
-                    <span
-                        v-for="tag in filterTagsBySearch(tags)"
-                        :key="tag"
-                        :style="getTagStyle(tag)"
-                        class="badge tag-item"
-                        :class="{ 'selected': selectedTags.includes(tag) }"
-                        @click="handleTagClick($event, tag)"
-                    >
-                        {{ tag }}
-                        <span v-if="selectedTags.includes(tag)" class="ms-1">&times;</span>
-                    </span>
-                    </div>
+          <!-- Tag Dropdown -->
+          <div v-show="showTagDropdown" class="tag-dropdown card" ref="tagDropdown" @click="handleDropdownClick">
+            <div class="card-body p-0">
+              <div v-for="(tags, category) in groupedTags" :key="category" class="p-2 border-bottom">
+                <div class="category-header mb-2 d-flex justify-content-between align-items-center"
+                  @click="toggleCategory(category)" style="cursor: pointer;">
+                  <span>{{ category }}</span>
+                  <span class="badge bg-secondary ms-2" style="font-size: 0.75rem;">
+                    {{ isCategorySelected(category) ? 'Deselect All' : 'Select All' }}
+                  </span>
                 </div>
+                <div class="d-flex flex-wrap gap-1">
+                  <span v-for="tag in filterTagsBySearch(tags)" :key="tag" :style="getTagStyle(tag)"
+                    class="badge tag-item" :class="{ 'selected': selectedTags.includes(tag) }"
+                    @click="handleTagClick($event, tag)">
+                    {{ tag }}
+                    <span v-if="selectedTags.includes(tag)" class="ms-1">&times;</span>
+                  </span>
                 </div>
+              </div>
             </div>
-            </div>
+          </div>
         </div>
+      </div>
     </div>
 
     <!-- Selected Tags Display (unchanged) -->
     <div v-if="selectedTags.length" class="mb-4">
       <div class="d-flex flex-wrap gap-2">
-        <span 
-          v-for="tag in selectedTags" 
-          :key="tag"
-          :style="getTagStyle(tag)"
-          class="badge selected-tag"
-        >
+        <span v-for="tag in selectedTags" :key="tag" :style="getTagStyle(tag)" class="badge selected-tag">
           {{ tag }}
-          <span 
-            class="ms-1" 
-            @click.stop="toggleTagFilter(tag)"
-          >&times;</span>
+          <span class="ms-1" @click.stop="toggleTagFilter(tag)">&times;</span>
         </span>
       </div>
     </div>
@@ -138,8 +92,7 @@
     </div>
 
     <!-- Results Count -->
-    <div v-if="!loading && filteredItems.length > 0" 
-         class="d-flex justify-content-between align-items-center mb-3">
+    <div v-if="!loading && filteredItems.length > 0" class="d-flex justify-content-between align-items-center mb-3">
       <div class="text-muted">
         Showing {{ filteredItems.length }} of {{ rssItems.length }} items
       </div>
@@ -169,13 +122,8 @@
             <td>
               <div class="d-flex flex-wrap gap-1">
                 <template v-if="item.tags && item.tags.length">
-                  <span 
-                    v-for="(tag, tagIndex) in item.tags" 
-                    :key="tagIndex"
-                    class="badge"
-                    :style="getTagStyle(tag)"
-                    @click="toggleTagFilter(tag)"
-                  >
+                  <span v-for="(tag, tagIndex) in item.tags" :key="tagIndex" class="badge" :style="getTagStyle(tag)"
+                    @click="toggleTagFilter(tag)">
                     {{ tag }}
                   </span>
                 </template>
@@ -186,10 +134,7 @@
               </div>
             </td>
             <td>
-              <a :href="item.link" 
-                 target="_blank" 
-                 rel="noopener noreferrer" 
-                 class="btn btn-sm btn-outline-primary">
+              <a :href="item.link" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
                 View Article
               </a>
             </td>
@@ -199,8 +144,7 @@
     </div>
 
     <!-- No Results Message (unchanged) -->
-    <div v-if="!loading && filteredItems.length === 0 && rssItems.length > 0" 
-         class="alert alert-info text-center">
+    <div v-if="!loading && filteredItems.length === 0 && rssItems.length > 0" class="alert alert-info text-center">
       No items match the current filters and search criteria.
       <button @click="clearFilters" class="btn btn-link">Clear all filters</button>
     </div>
@@ -221,11 +165,11 @@ const TAG_CATEGORIES = {
 
 export default {
   name: 'IndexPage',
-  
+
   directives: {
     clickOutside: {
       mounted(el, binding) {
-        el._clickOutside = function(event) {
+        el._clickOutside = function (event) {
           if (!(el === event.target || el.contains(event.target))) {
             binding.value(event)
           }
@@ -255,10 +199,10 @@ export default {
         { url: 'https://news.ycombinator.com/rss', source: 'Hacker News' },
         { url: 'https://www.security.nl/rss/headlines.xml', source: 'Security.nl' },
         { url: 'https://tweakers.net/feeds/mixed.xml', source: 'Tweakers.net' }
-    ]
+      ]
     }
   },
-  
+
   computed: {
     availableTags() {
       const tagSet = new Set()
@@ -297,44 +241,44 @@ export default {
     },
 
     uniqueSources() {
-        return [...new Set(this.rssItems.map(item => item.source))].sort()
+      return [...new Set(this.rssItems.map(item => item.source))].sort()
     },
 
     filteredItems() {
-        let items = this.rssItems
+      let items = this.rssItems
 
-        // Apply source filter
-        if (this.selectedSource) {
+      // Apply source filter
+      if (this.selectedSource) {
         items = items.filter(item => item.source === this.selectedSource)
-        }
+      }
 
-        // Apply tag filters using OR logic
-        if (this.selectedTags.length) {
+      // Apply tag filters using OR logic
+      if (this.selectedTags.length) {
         items = items.filter(item => {
-            if (!item.tags) return false
-            return item.tags.some(itemTag => 
-            this.selectedTags.some(selectedTag => 
-                itemTag.toLowerCase() === selectedTag.toLowerCase()
+          if (!item.tags) return false
+          return item.tags.some(itemTag =>
+            this.selectedTags.some(selectedTag =>
+              itemTag.toLowerCase() === selectedTag.toLowerCase()
             )
-            )
+          )
         })
-        }
+      }
 
-        // Apply search filter
-        if (this.searchQuery.trim()) {
+      // Apply search filter
+      if (this.searchQuery.trim()) {
         const query = this.searchQuery.toLowerCase().trim()
-        items = items.filter(item => 
-            item.title.toLowerCase().includes(query)
+        items = items.filter(item =>
+          item.title.toLowerCase().includes(query)
         )
-        }
+      }
 
-        return items
+      return items
     }
   },
   async mounted() {
     await this.fetchAllFeeds()
     this.startPollingForTags()
-    
+
     document.addEventListener('keydown', this.handleEscape)
     document.addEventListener('click', this.handleClickOutside)
 
@@ -359,87 +303,107 @@ export default {
   },
 
   methods: {
-    clearCache() {
-      localStorage.clear();
-      this.rssItems = [];
-      this.fetchAllFeeds();
-    },
-
     normalizeTag(tag) {
-        const tagLower = tag.toLowerCase()
-        for (const [category, config] of Object.entries(TAG_CATEGORIES)) {
-            if (config.aliases && config.aliases[tagLower]) {
-                return config.aliases[tagLower]
-            }
-            if (config.keywords && config.keywords.some(k => tagLower.includes(k))) {
-                return config.keywords.find(k => tagLower.includes(k))
-            }
+      const tagLower = tag.toLowerCase()
+      for (const [category, config] of Object.entries(TAG_CATEGORIES)) {
+        if (config.aliases && config.aliases[tagLower]) {
+          return config.aliases[tagLower]
         }
-        return tag
+        if (config.keywords && config.keywords.some(k => tagLower.includes(k))) {
+          return config.keywords.find(k => tagLower.includes(k))
+        }
+      }
+      return tag
     },
 
     filterTagsBySearch(tags) {
-        if (!this.tagSearchQuery.trim()) return tags
-        const query = this.tagSearchQuery.toLowerCase().trim()
-        return tags.filter(tag => this.normalizeTag(tag).toLowerCase().includes(query))
+      if (!this.tagSearchQuery.trim()) return tags
+      const query = this.tagSearchQuery.toLowerCase().trim()
+      return tags.filter(tag => this.normalizeTag(tag).toLowerCase().includes(query))
     },
 
     generateColorFromString(str) {
-        let hash = 0
-        for (let i = 0; i < str.length; i++) {
-            hash = str.charCodeAt(i) + ((hash << 5) - hash)
-        }
-        const hue = Math.abs(hash % 360)
-        return `hsl(${hue}, 65%, 45%)`
+      let hash = 0
+      for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash)
+      }
+      const hue = Math.abs(hash % 360)
+      return `hsl(${hue}, 65%, 45%)`
     },
 
     getTagStyle(tag) {
-        const backgroundColor = this.generateColorFromString(this.normalizeTag(tag))
-        return {
-            backgroundColor,
-            color: '#ffffff',
-            transition: 'opacity 0.2s'
-        }
+      const backgroundColor = this.generateColorFromString(this.normalizeTag(tag))
+      return {
+        backgroundColor,
+        color: '#ffffff',
+        transition: 'opacity 0.2s'
+      }
+    },
+
+    // Add these new methods
+    isCategorySelected(category) {
+      const categoryTags = this.groupedTags[category] || []
+      return categoryTags.length > 0 &&
+        categoryTags.every(tag => this.selectedTags.includes(tag))
+    },
+
+    toggleCategory(category) {
+      const categoryTags = this.groupedTags[category] || []
+      const isSelected = this.isCategorySelected(category)
+
+      if (isSelected) {
+        // Remove all tags in this category
+        this.selectedTags = this.selectedTags.filter(tag =>
+          !categoryTags.includes(tag)
+        )
+      } else {
+        // Add all tags in this category that aren't already selected
+        categoryTags.forEach(tag => {
+          if (!this.selectedTags.includes(tag)) {
+            this.selectedTags.push(tag)
+          }
+        })
+      }
     },
 
     handleTagClick(event, tag) {
-        event.stopPropagation()
-        this.toggleTagFilter(tag)
+      event.stopPropagation()
+      this.toggleTagFilter(tag)
     },
 
     handleDropdownClick(event) {
-        event.stopPropagation()
+      event.stopPropagation()
     },
 
     handleEscape(event) {
-        if (event.key === 'Escape') {
-            this.showTagDropdown = false
-        }
+      if (event.key === 'Escape') {
+        this.showTagDropdown = false
+      }
     },
 
     handleClickOutside(event) {
-        const dropdown = this.$refs.tagDropdown
-        const input = this.$refs.tagInput
-        if (!dropdown?.contains(event.target) && !input?.contains(event.target)) {
-            this.showTagDropdown = false
-        }
+      const dropdown = this.$refs.tagDropdown
+      const input = this.$refs.tagInput
+      if (!dropdown?.contains(event.target) && !input?.contains(event.target)) {
+        this.showTagDropdown = false
+      }
     },
 
     clearFilters() {
-        this.selectedTags = []
-        this.searchQuery = ''
-        this.tagSearchQuery = ''
-        this.selectedSource = ''
+      this.selectedTags = []
+      this.searchQuery = ''
+      this.tagSearchQuery = ''
+      this.selectedSource = ''
     },
 
     toggleTagFilter(tag) {
-        const normalizedTag = this.normalizeTag(tag)
-        const index = this.selectedTags.findIndex(t => this.normalizeTag(t) === normalizedTag)
-        if (index === -1) {
-            this.selectedTags.push(tag)
-        } else {
-            this.selectedTags.splice(index, 1)
-        }
+      const normalizedTag = this.normalizeTag(tag)
+      const index = this.selectedTags.findIndex(t => this.normalizeTag(t) === normalizedTag)
+      if (index === -1) {
+        this.selectedTags.push(tag)
+      } else {
+        this.selectedTags.splice(index, 1)
+      }
     },
 
     async fetchAllFeeds() {
@@ -459,64 +423,72 @@ export default {
     },
 
     async fetchFeed(feed) {
-        const proxyUrl = `${process.env.PROXY_URL || 'http://localhost:3001'}/rss`
-        try {
-            const response = await fetch(`${proxyUrl}?url=${encodeURIComponent(feed.url)}`)
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-            const items = await response.json()
-            return items.map(item => ({
-                ...item,
-                source: feed.source,
-                tags: item.tags?.map(tag => this.normalizeTag(tag)) || []
-            }))
-        } catch (error) {
-            console.error(`Error fetching ${feed.source}:`, error)
-            throw error
-        }
+      const config = useRuntimeConfig();
+      const workerUrl = config.public.workerUrl;
+
+      try {
+        const response = await fetch(`${workerUrl}?url=${encodeURIComponent(feed.url)}`)
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+        const items = await response.json()
+
+        // Map items and preserve existing tags if they exist
+        return items.map(item => ({
+          ...item,
+          source: feed.source,
+          tags: item.tags?.map(tag => this.normalizeTag(tag)) ||
+            this.rssItems.find(existing => existing.title === item.title)?.tags || []
+        }))
+      } catch (error) {
+        console.error(`Error fetching ${feed.source}:`, error)
+        throw error
+      }
     },
 
     startPollingForTags() {
-        let attempts = 0
-        const maxAttempts = 60
+      let attempts = 0
+      const maxAttempts = 60
 
-        this.pollingInterval = setInterval(async () => {
-            attempts++
-            if (attempts >= maxAttempts) {
-                clearInterval(this.pollingInterval)
-                this.tagLoadingTimeout = true
-                return
+      this.pollingInterval = setInterval(async () => {
+        attempts++
+        if (attempts >= maxAttempts) {
+          clearInterval(this.pollingInterval)
+          this.tagLoadingTimeout = true
+          return
+        }
+
+        const config = useRuntimeConfig();
+        const workerUrl = config.public.workerUrl;
+
+        for (const feed of this.sources) {
+          try {
+            const response = await fetch(
+              `${workerUrl}?url=${encodeURIComponent(feed.url)}&tagsOnly=true`
+            )
+            if (!response.ok) continue
+
+            const updatedItems = await response.json()
+
+            this.rssItems = this.rssItems.map(item => {
+              const updatedItem = updatedItems.find(u => u.title === item.title)
+              return updatedItem ? {
+                ...item,
+                tags: updatedItem.tags?.map(tag => this.normalizeTag(tag)) || []
+              } : item
+            })
+
+            if (this.rssItems.every(item => item.tags && item.tags.length > 0)) {
+              clearInterval(this.pollingInterval)
+              if (this.tagTimeoutTimer) {
+                clearTimeout(this.tagTimeoutTimer)
+              }
             }
-
-            const proxyUrl = `${process.env.PROXY_URL || 'http://localhost:3001'}/rss`
-            
-            for (const feed of this.sources) {
-                try {
-                    const response = await fetch(`${proxyUrl}?url=${encodeURIComponent(feed.url)}&tagsOnly=true`)
-                    if (!response.ok) continue
-
-                    const updatedItems = await response.json()
-                    
-                    this.rssItems = this.rssItems.map(item => {
-                        const updatedItem = updatedItems.find(u => u.title === item.title)
-                        return updatedItem ? { 
-                            ...item, 
-                            tags: updatedItem.tags?.map(tag => this.normalizeTag(tag)) || [] 
-                        } : item
-                    })
-
-                    if (this.rssItems.every(item => item.tags && item.tags.length > 0)) {
-                        clearInterval(this.pollingInterval)
-                        if (this.tagTimeoutTimer) {
-                            clearTimeout(this.tagTimeoutTimer)
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error polling for tags:', error)
-                }
-            }
-        }, 5000)
+          } catch (error) {
+            console.error('Error polling for tags:', error)
+          }
+        }
+      }, 5000)
     }
-}
+  }
 
 }
 </script>
@@ -569,8 +541,13 @@ export default {
   user-select: none;
 }
 
-.gap-1 { gap: 0.25rem; }
-.gap-2 { gap: 0.5rem; }
+.gap-1 {
+  gap: 0.25rem;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
 
 /* Search bar styles */
 .input-group-text {
@@ -595,5 +572,14 @@ export default {
 .form-select:focus {
   border-color: #ced4da;
   box-shadow: none;
+}
+
+.category-header {
+  user-select: none;
+  transition: opacity 0.2s;
+}
+
+.category-header:hover {
+  opacity: 0.7;
 }
 </style>

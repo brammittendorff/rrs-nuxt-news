@@ -1,9 +1,14 @@
-// https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   css: [
     'bootstrap/dist/css/bootstrap.min.css',
     'bootstrap-icons/font/bootstrap-icons.css'
   ],
-  compatibilityDate: '2024-11-01',
+  runtimeConfig: {
+    public: {
+      workerUrl: process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:8787/rss'
+        : 'https://news-worker.nerd.host/rss'
+    }
+  },
   devtools: { enabled: true }
 })

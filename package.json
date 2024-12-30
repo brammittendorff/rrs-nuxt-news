@@ -7,8 +7,12 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "proxy": "node server/proxy.js",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "dev:worker": "wrangler dev --env development",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:worker\"",
+    "deploy:worker": "wrangler deploy --env production",
+    "deploy:pages": "npm run generate && wrangler pages deploy .output/public",
+    "deploy": "npm run deploy:worker && npm run deploy:pages"
   },
   "dependencies": {
     "axios": "^1.7.9",
@@ -23,5 +27,11 @@
     "nuxt": "^3.15.0",
     "vue": "latest",
     "vue-router": "latest"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241224.0",
+    "concurrently": "^9.1.1",
+    "vitest": "^2.1.8",
+    "wrangler": "^3.99.0"
   }
 }
