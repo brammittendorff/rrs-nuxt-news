@@ -3,9 +3,24 @@
     <h1 class="text-center mb-5">RSS Feeds</h1>
 
     <!-- Search Bars Row -->
-    <div class="row mb-4 g-3">
+    <div class="row mb-4 g-3 align-items-center">
+
+      <!-- Clicked Filter -->
+      <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="bi bi-eye"></i>
+          </span>
+          <select class="form-select" v-model="clickedFilter">
+            <option value="">All Articles</option>
+            <option value="clicked">Clicked</option>
+            <option value="notClicked">Not Clicked</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Source Filter -->
-      <div class="col-md-2">
+      <div class="col-12 col-sm-6 col-md-3 col-lg-2">
         <div class="input-group">
           <span class="input-group-text">
             <i class="bi bi-funnel"></i>
@@ -20,7 +35,7 @@
       </div>
 
       <!-- Title Search -->
-      <div class="col-md-4">
+      <div class="col-12 col-md-6 col-lg-4">
         <div class="input-group">
           <span class="input-group-text">
             <i class="bi bi-search"></i>
@@ -30,7 +45,7 @@
       </div>
 
       <!-- Tag Search with Dropdown -->
-      <div class="col-md-6">
+      <div class="col-12 col-lg-4">
         <div class="position-relative">
           <div class="input-group">
             <span class="input-group-text">
@@ -68,6 +83,7 @@
         </div>
       </div>
     </div>
+
 
     <!-- Selected Tags Display (unchanged) -->
     <div v-if="selectedTags.length" class="mb-4">
@@ -114,7 +130,8 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(item, index) in filteredItems" :key="index">
+          <tr v-for="(item, index) in filteredItems" :key="index"
+            :class="{ 'table-active': clickedArticles.includes(item.link) }">
             <td>{{ item.title }}</td>
             <td>
               <span class="badge bg-secondary">{{ item.source }}</span>
@@ -127,14 +144,19 @@
                     {{ tag }}
                   </span>
                 </template>
-                <span v-else class="badge bg-light text-dark">
+                <span v-else-if="!tagLoadingTimeout" class="badge bg-light text-dark">
                   <span class="spinner-border spinner-border-sm me-1" role="status"></span>
                   Loading tags...
                 </span>
+                <span v-else class="badge bg-light text-danger">
+                  No tags available
+                </span>
               </div>
             </td>
+
             <td>
-              <a :href="item.link" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
+              <a :href="item.link" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary"
+                @click="trackArticleClick(item)">
                 View Article
               </a>
             </td>
@@ -152,16 +174,7 @@
 </template>
 
 <script>
-const TAG_CATEGORIES = {
-  'Security': ['security', 'vulnerability', 'hack', 'malware', 'privacy', 'encryption', 'cyber'],
-  'Development': ['programming', 'software', 'code', 'development', 'api', 'web'],
-  'Hardware': ['hardware', 'chip', 'computer', 'device', 'server', 'network', 'router', 'iot'],
-  'Technology': ['tech', 'digital', 'mobile', 'app'],
-  'AI & Data': ['ai', 'machine learning', 'data', 'analytics', 'model'],
-  'Business': ['business', 'company', 'market', 'startup', 'industry'],
-  'Legal & Policy': ['law', 'policy', 'regulation', 'compliance', 'legal'],
-  'Research': ['research', 'study', 'analysis', 'paper', 'science']
-}
+import TAG_CATEGORIES from '../worker/tagCategories.js';
 
 export default {
   name: 'IndexPage',
@@ -184,6 +197,7 @@ export default {
 
   data() {
     return {
+      clickedFilter: '', // Default to showing all articles
       selectedSource: '', // Define with a default value
       rssItems: [],
       loading: true,
@@ -204,6 +218,9 @@ export default {
   },
 
   computed: {
+    clickedArticles() {
+      return JSON.parse(sessionStorage.getItem('clickedArticles') || '[]');
+    },
     availableTags() {
       const tagSet = new Set()
       this.rssItems.forEach(item => {
@@ -245,35 +262,43 @@ export default {
     },
 
     filteredItems() {
-      let items = this.rssItems
+      let items = this.rssItems;
 
       // Apply source filter
       if (this.selectedSource) {
-        items = items.filter(item => item.source === this.selectedSource)
+        items = items.filter(item => item.source === this.selectedSource);
       }
 
       // Apply tag filters using OR logic
       if (this.selectedTags.length) {
         items = items.filter(item => {
-          if (!item.tags) return false
+          if (!item.tags) return false;
           return item.tags.some(itemTag =>
             this.selectedTags.some(selectedTag =>
               itemTag.toLowerCase() === selectedTag.toLowerCase()
             )
-          )
-        })
+          );
+        });
       }
 
       // Apply search filter
       if (this.searchQuery.trim()) {
-        const query = this.searchQuery.toLowerCase().trim()
+        const query = this.searchQuery.toLowerCase().trim();
         items = items.filter(item =>
           item.title.toLowerCase().includes(query)
-        )
+        );
       }
 
-      return items
-    }
+      // Apply clicked filter
+      const clickedArticles = JSON.parse(sessionStorage.getItem('clickedArticles') || '[]');
+      if (this.clickedFilter === 'clicked') {
+        items = items.filter(item => clickedArticles.includes(item.link));
+      } else if (this.clickedFilter === 'notClicked') {
+        items = items.filter(item => !clickedArticles.includes(item.link));
+      }
+
+      return items;
+    },
   },
   async mounted() {
     await this.fetchAllFeeds()
@@ -303,17 +328,45 @@ export default {
   },
 
   methods: {
+    trackArticleClick(item) {
+      // Get the existing clicked articles from session storage
+      const clickedArticles = JSON.parse(sessionStorage.getItem('clickedArticles') || '[]');
+
+      // Check if the current article is already clicked
+      if (!clickedArticles.includes(item.link)) {
+        clickedArticles.push(item.link);
+        sessionStorage.setItem('clickedArticles', JSON.stringify(clickedArticles));
+      }
+
+      // Optional: Log to the backend
+      this.logArticleClick(item);
+    },
+
+    async logArticleClick(item) {
+      try {
+        // Replace with your API endpoint
+        await fetch('/api/log-click', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: item.title,
+            link: item.link,
+            timestamp: new Date().toISOString(),
+          }),
+        });
+      } catch (error) {
+        console.error('Error logging article click:', error);
+      }
+    },
+
     normalizeTag(tag) {
-      const tagLower = tag.toLowerCase()
-      for (const [category, config] of Object.entries(TAG_CATEGORIES)) {
-        if (config.aliases && config.aliases[tagLower]) {
-          return config.aliases[tagLower]
-        }
-        if (config.keywords && config.keywords.some(k => tagLower.includes(k))) {
-          return config.keywords.find(k => tagLower.includes(k))
+      const tagLower = tag.toLowerCase();
+      for (const [category, keywords] of Object.entries(TAG_CATEGORIES)) {
+        if (keywords.some((keyword) => tagLower.includes(keyword))) {
+          return category; // Return the category name if the tag matches
         }
       }
-      return tag
+      return tag; // Return the original tag if no category matches
     },
 
     filterTagsBySearch(tags) {
@@ -427,67 +480,92 @@ export default {
       const workerUrl = config.public.workerUrl;
 
       try {
-        const response = await fetch(`${workerUrl}?url=${encodeURIComponent(feed.url)}`)
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-        const items = await response.json()
+        const response = await fetch(`${workerUrl}?url=${encodeURIComponent(feed.url)}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const items = await response.json();
 
-        // Map items and preserve existing tags if they exist
-        return items.map(item => ({
-          ...item,
-          source: feed.source,
-          tags: item.tags?.map(tag => this.normalizeTag(tag)) ||
-            this.rssItems.find(existing => existing.title === item.title)?.tags || []
-        }))
+        // Fetch cached tags for the items
+        const tagResponse = await fetch(`${workerUrl}?url=${encodeURIComponent(feed.url)}&tagsOnly=true`);
+        const cachedTags = tagResponse.ok ? await tagResponse.json() : [];
+
+        // Attach tags to the feed items
+        return items.map(item => {
+          const cachedItem = cachedTags.find(cached => cached.title === item.title);
+          return {
+            ...item,
+            source: feed.source,
+            tags: cachedItem ? cachedItem.tags || [] : [],
+          };
+        });
       } catch (error) {
-        console.error(`Error fetching ${feed.source}:`, error)
-        throw error
+        console.error(`Error fetching ${feed.source}:`, error);
+        throw error;
       }
     },
 
     startPollingForTags() {
-      let attempts = 0
-      const maxAttempts = 60
+      let attempts = 0;
+      const maxAttempts = 60;
 
+      // Poll every 5 seconds
       this.pollingInterval = setInterval(async () => {
-        attempts++
+        attempts++;
         if (attempts >= maxAttempts) {
-          clearInterval(this.pollingInterval)
-          this.tagLoadingTimeout = true
-          return
+          clearInterval(this.pollingInterval);
+          this.tagLoadingTimeout = true;
+          console.log('[Frontend] Tag polling timed out.');
+          return;
         }
 
         const config = useRuntimeConfig();
         const workerUrl = config.public.workerUrl;
 
-        for (const feed of this.sources) {
-          try {
+        const untaggedItems = this.rssItems.filter(item =>
+          !item.tags || item.tags.length === 0
+        );
+
+        console.log('[Frontend] Untagged Items:', untaggedItems.length);
+
+        if (untaggedItems.length === 0) {
+          console.log('[Frontend] All items tagged. Stopping polling.');
+          clearInterval(this.pollingInterval);
+          this.tagLoadingTimeout = false;
+          return;
+        }
+
+        try {
+          // Fetch updated tags for each feed
+          for (const feed of this.sources) {
             const response = await fetch(
               `${workerUrl}?url=${encodeURIComponent(feed.url)}&tagsOnly=true`
-            )
-            if (!response.ok) continue
+            );
 
-            const updatedItems = await response.json()
-
-            this.rssItems = this.rssItems.map(item => {
-              const updatedItem = updatedItems.find(u => u.title === item.title)
-              return updatedItem ? {
-                ...item,
-                tags: updatedItem.tags?.map(tag => this.normalizeTag(tag)) || []
-              } : item
-            })
-
-            if (this.rssItems.every(item => item.tags && item.tags.length > 0)) {
-              clearInterval(this.pollingInterval)
-              if (this.tagTimeoutTimer) {
-                clearTimeout(this.tagTimeoutTimer)
-              }
+            if (!response.ok) {
+              console.warn(`[Frontend] Failed to fetch tags for ${feed.url}`);
+              continue;
             }
-          } catch (error) {
-            console.error('Error polling for tags:', error)
+
+            const updatedItems = await response.json();
+            console.log(`[Frontend] Updated items for ${feed.url}:`, updatedItems);
+
+            // Update RSS items with cached tags
+            this.rssItems = this.rssItems.map(item => {
+              const updatedItem = updatedItems.find(u => u.title === item.title);
+              return updatedItem
+                ? { ...item, tags: updatedItem.tags || [] }
+                : item;
+            });
+
+            // Update UI immediately with available tags
+            this.$forceUpdate();
           }
+        } catch (error) {
+          console.error('[Frontend] Error polling tags:', error);
         }
-      }, 5000)
+      }, 5000); // Adjust interval as necessary
     }
+
+
   }
 
 }
@@ -581,5 +659,9 @@ export default {
 
 .category-header:hover {
   opacity: 0.7;
+}
+
+.table-active {
+  background-color: #e9ecef !important;
 }
 </style>
