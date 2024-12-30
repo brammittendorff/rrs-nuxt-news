@@ -7,7 +7,7 @@ A modern RSS feed reader that automatically tags articles using OpenAI's GPT API
 ## Features
 
 - Multiple RSS feed sources (Hacker News, Security.nl, Tweakers.net)
-- AI-powered automatic article tagging using OpenAI GPT-3.5
+- AI-powered automatic article tagging using OpenAI gpt-4o-mini
 - Real-time tag filtering with categorization
 - Title search functionality
 - Source filtering

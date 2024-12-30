@@ -1,0 +1,53 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build site
+        run: npm run generate
+        env:
+          NUXT_PUBLIC_PROXY_URL: https://news-worker.nerd.host/rss
+          
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: deploy --env production
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          RSS_CACHE_KV_ID_DEFAULT: ${{ secrets.RSS_CACHE_KV_ID_DEFAULT }}
+          RSS_CACHE_KV_ID_DEV: ${{ secrets.RSS_CACHE_KV_ID_DEV }}
+          RSS_CACHE_KV_ID_PROD: ${{ secrets.RSS_CACHE_KV_ID_PROD }}
+          
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: news-nerd-host
+          directory: .output/public
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
