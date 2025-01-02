@@ -27,7 +27,8 @@ jobs:
       - name: Build site
         run: npm run generate
         env:
-          NUXT_PUBLIC_PROXY_URL: https://news-worker.news.nerd.host/rss
+          NODE_ENV: production
+          NUXT_PUBLIC_PROXY_URL: https://news-worker.news-worker.workers.dev/rss
 
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
@@ -36,6 +37,7 @@ jobs:
           command: deploy --env production
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          NODE_ENV: production
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
@@ -44,3 +46,4 @@ jobs:
           command: pages deploy .output/public --project-name=news-nerd-host --branch=main
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          NODE_ENV: production
