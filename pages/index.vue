@@ -174,49 +174,10 @@
 </template>
 
 <script>
-import { useFeedStore } from '~/stores/feed'
 import TAG_CATEGORIES from '~/worker/tagCategories';
 
 export default {
   name: 'IndexPage',
-
-
-  setup() {
-    const store = useFeedStore()
-    const sources = [
-      { url: 'https://news.ycombinator.com/rss', source: 'Hacker News' },
-      { url: 'https://www.security.nl/rss/headlines.xml', source: 'Security.nl' },
-      { url: 'https://tweakers.net/feeds/mixed.xml', source: 'Tweakers.net' }
-    ]
-
-    onMounted(async () => {
-      await store.fetchFeeds(sources)
-    })
-
-    onBeforeUnmount(() => {
-      store.stopPolling()
-    })
-
-    return {
-      store,
-    }
-  },
-
-  directives: {
-    clickOutside: {
-      mounted(el, binding) {
-        el._clickOutside = function (event) {
-          if (!(el === event.target || el.contains(event.target))) {
-            binding.value(event)
-          }
-        }
-        document.addEventListener('click', el._clickOutside)
-      },
-      unmounted(el) {
-        document.removeEventListener('click', el._clickOutside)
-      }
-    }
-  },
 
   data() {
     return {
@@ -587,7 +548,7 @@ export default {
         } catch (error) {
           console.error('[Frontend] Error polling tags:', error);
         }
-      }, 5000); // Adjust interval as necessary
+      }, 2000); // Adjust interval as necessary
     }
 
 
