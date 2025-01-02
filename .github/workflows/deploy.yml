@@ -27,7 +27,7 @@ jobs:
       - name: Build site
         run: npm run generate
         env:
-          NUXT_PUBLIC_PROXY_URL: https://news-worker.pescheck.dev/rss
+          NUXT_PUBLIC_PROXY_URL: https://news-worker.news.nerd.host/rss
 
       - name: Deploy Worker to Production
         uses: cloudflare/wrangler-action@v3
@@ -45,7 +45,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: news-pescheck-dev
+          projectName: news-nerd-host
           directory: .output/public
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: main
