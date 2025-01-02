@@ -16,7 +16,7 @@ OPENAI_API_KEY = "${OPENAI_API_KEY}"
 # Development environment
 [env.development]
 kv_namespaces = [
-    { binding = "RSS_CACHE_DEV", id = "${RSS_CACHE_KV_ID_DEV}" }
+    { binding = "RSS_CACHE", id = "${RSS_CACHE_KV_ID_DEV}" }
 ]
 
 [env.development.vars]
@@ -26,7 +26,7 @@ OPENAI_API_KEY = "${OPENAI_API_KEY}"
 # Production environment
 [env.production]
 kv_namespaces = [
-    { binding = "RSS_CACHE_PROD", id = "${RSS_CACHE_KV_ID_PROD}" }
+    { binding = "RSS_CACHE", id = "${RSS_CACHE_KV_ID_PROD}" }
 ]
 
 [env.production.vars]
