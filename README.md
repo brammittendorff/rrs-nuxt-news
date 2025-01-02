@@ -24,62 +24,98 @@ A modern RSS feed reader that automatically tags articles using OpenAI's GPT API
 
 ## Local Development Setup
 
-1. Clone the repository:
+### 1. Clone the repository:
 ```bash
 git clone <repository-url>
 cd <repository-name>
 ```
 
-2. Install dependencies:
+### 2. Install dependencies:
 ```bash
 npm install
 ```
 
-3. Set up your Cloudflare Worker:
+### 3. Set up your Cloudflare Worker:
 
-   a. Login to Cloudflare using Wrangler:
-   ```bash
-   wrangler login
-   ```
-
-   b. Create three KV namespaces (for default, dev, and prod environments):
-   ```bash
-   wrangler kv:namespace create "RSS_CACHE"
-   wrangler kv:namespace create "RSS_CACHE_DEV"
-   wrangler kv:namespace create "RSS_CACHE_PROD"
-   ```
-
-   Take note of the IDs returned from these commands.
-
-4. Create a `.env` file in the root directory with the following variables:
-```env
-OPENAI_API_KEY="your-openai-api-key"
-CLOUDFLARE_API_TOKEN="your-cloudflare-api-token"
-CLOUDFLARE_ACCOUNT_ID="your-account-id"
-RSS_CACHE_KV_ID_DEFAULT="id-from-first-namespace"
-RSS_CACHE_KV_ID_DEV="id-from-dev-namespace"
-RSS_CACHE_KV_ID_PROD="id-from-prod-namespace"
+#### a. Login to Cloudflare using Wrangler:
+```bash
+wrangler login
 ```
 
-5. Update `wrangler.toml` with your KV namespace IDs if they differ from the existing configuration.
+#### b. Create three KV namespaces (for default, dev, and prod environments):
+```bash
+wrangler kv:namespace create "RSS_CACHE"
+wrangler kv:namespace create "RSS_CACHE_DEV"
+wrangler kv:namespace create "RSS_CACHE_PROD"
+```
 
-6. Start the development servers:
+Take note of the **namespace IDs** returned from these commands.
 
-   To run both the Nuxt frontend and Cloudflare Worker simultaneously:
-   ```bash
-   npm run dev:all
-   ```
+### 4. Create a `.dev.vars` file in the root directory with the following variables:
+```env
+# Development environment variables
+OPENAI_API_KEY="your-development-openai-api-key"
+CLOUDFLARE_API_TOKEN="your-development-cloudflare-api-token"
+CLOUDFLARE_ACCOUNT_ID="your-development-account-id"
+RSS_CACHE_KV_ID_DEV="id-from-dev-namespace"
+```
 
-   Or run them separately:
-   ```bash
-   # Terminal 1 - Nuxt frontend
-   npm run dev
+This file will store your environment-specific variables for development.
 
-   # Terminal 2 - Cloudflare Worker
-   npm run dev:worker
-   ```
+### 5. Update `wrangler.toml` with your KV namespace IDs:
+- After obtaining your namespace IDs, update your `wrangler.toml` to include the correct IDs for each environment. Here’s a template for that:
 
-The application will be available at `http://localhost:3000`
+### `wrangler.toml` Configuration
+
+```toml
+name = "news-worker"
+main = "worker/index.js"
+compatibility_date = "2024-01-01"
+
+workers_dev = true
+
+# Default environment (Common for all environments)
+kv_namespaces = [
+    { binding = "RSS_CACHE", id = "KV_ID" }
+]
+
+[vars]
+OPENAI_API_KEY = "OPENAI_API_KEY"
+
+# Environment-specific settings
+[env]
+[env.development]
+ENVIRONMENT = "development"
+kv_namespaces = [
+    { binding = "RSS_CACHE", id = "KV_ID" }
+]
+
+[env.production]
+ENVIRONMENT = "production"
+kv_namespaces = [
+    { binding = "RSS_CACHE", id = "KV_ID" }
+]
+```
+
+Replace `"KV_ID"` with the actual KV namespace IDs for your `default`, `dev`, and `prod` environments.
+
+### 6. Start the development servers:
+
+To run both the Nuxt frontend and Cloudflare Worker simultaneously:
+```bash
+npm run dev:all
+```
+
+Or run them separately in two different terminals:
+```bash
+# Terminal 1 - Nuxt frontend
+npm run dev
+
+# Terminal 2 - Cloudflare Worker
+npm run dev:worker
+```
+
+The application will be available at `http://localhost:3000`.
 
 ## Project Structure
 
@@ -90,7 +126,7 @@ The application will be available at `http://localhost:3000`
 │   └── index.vue       # Main RSS reader component
 ├── nuxt.config.ts      # Nuxt configuration
 ├── wrangler.toml       # Cloudflare Worker configuration
-└── .env               # Environment variables
+└── .dev.vars           # Environment variables for development
 ```
 
 ## Configuration
@@ -108,12 +144,12 @@ Tag categories are defined in `pages/index.vue` under the `TAG_CATEGORIES` const
 
 ## Deployment
 
-1. Deploy the Cloudflare Worker:
+1. **Deploy the Cloudflare Worker**:
 ```bash
 npm run deploy:worker
 ```
 
-2. Deploy the Nuxt frontend to Cloudflare Pages:
+2. **Deploy the Nuxt frontend to Cloudflare Pages**:
 ```bash
 npm run deploy:pages
 ```
