@@ -15,7 +15,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -29,17 +29,13 @@ jobs:
         env:
           NUXT_PUBLIC_PROXY_URL: https://news-worker.news.nerd.host/rss
 
-      - name: Deploy Worker to Production
+      - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: deploy --env production
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          RSS_CACHE_KV_ID_DEFAULT: ${{ secrets.RSS_CACHE_KV_ID_DEFAULT }}
-          RSS_CACHE_KV_ID_DEV: ${{ secrets.RSS_CACHE_KV_ID_DEV }}
-          RSS_CACHE_KV_ID_PROD: ${{ secrets.RSS_CACHE_KV_ID_PROD }}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
@@ -48,7 +44,3 @@ jobs:
           command: pages deploy .output/public --project-name=news-nerd-host --branch=main
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          RSS_CACHE_KV_ID_DEFAULT: ${{ secrets.RSS_CACHE_KV_ID_DEFAULT }}
-          RSS_CACHE_KV_ID_DEV: ${{ secrets.RSS_CACHE_KV_ID_DEV }}
-          RSS_CACHE_KV_ID_PROD: ${{ secrets.RSS_CACHE_KV_ID_PROD }}
