@@ -34,18 +34,20 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: deploy --env production
+          wranglerVersion: "3.99.0"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           RSS_CACHE_KV_ID: ${{ secrets.RSS_CACHE_KV_ID_PROD }}
-
+f
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "3.99.0"
           projectName: news-nerd-host
           directory: .output/public
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
