@@ -174,10 +174,33 @@
 </template>
 
 <script>
-import TAG_CATEGORIES from '../worker/tagCategories.js';
+import { useFeedStore } from '~/stores/feed'
+import TAG_CATEGORIES from '~/worker/tagCategories';
 
 export default {
   name: 'IndexPage',
+
+
+  setup() {
+    const store = useFeedStore()
+    const sources = [
+      { url: 'https://news.ycombinator.com/rss', source: 'Hacker News' },
+      { url: 'https://www.security.nl/rss/headlines.xml', source: 'Security.nl' },
+      { url: 'https://tweakers.net/feeds/mixed.xml', source: 'Tweakers.net' }
+    ]
+
+    onMounted(async () => {
+      await store.fetchFeeds(sources)
+    })
+
+    onBeforeUnmount(() => {
+      store.stopPolling()
+    })
+
+    return {
+      store,
+    }
+  },
 
   directives: {
     clickOutside: {

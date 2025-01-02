@@ -3,6 +3,9 @@ export default defineNuxtConfig({
     'bootstrap/dist/css/bootstrap.min.css',
     'bootstrap-icons/font/bootstrap-icons.css'
   ],
+  modules: [
+    '@pinia/nuxt',
+  ],
   runtimeConfig: {
     public: {
       workerUrl: process.env.NODE_ENV === 'development' 
