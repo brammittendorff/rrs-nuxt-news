@@ -26,3 +26,4 @@ logs
 
 # Wrangler
 .wrangler/
+wrangler.toml
