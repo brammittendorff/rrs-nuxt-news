@@ -37,7 +37,10 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          RSS_CACHE_KV_ID: ${{ secrets.RSS_CACHE_KV_ID_PROD }}
+          # Add these to match wrangler.toml
+          RSS_CACHE_KV_ID_DEFAULT: ${{ secrets.RSS_CACHE_KV_ID_DEFAULT }}
+          RSS_CACHE_KV_ID_DEV: ${{ secrets.RSS_CACHE_KV_ID_DEV }}
+          RSS_CACHE_KV_ID_PROD: ${{ secrets.RSS_CACHE_KV_ID_PROD }}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
