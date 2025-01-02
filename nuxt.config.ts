@@ -7,7 +7,7 @@ export default defineNuxtConfig({
     public: {
       workerUrl: process.env.NODE_ENV === 'development' 
         ? 'http://localhost:8787/rss'
-        : 'https://news-worker.nerd.host/rss'
+        : 'https://news-worker.news-worker.workers.dev/rss'
     }
   },
   devtools: { enabled: true }
