@@ -450,12 +450,14 @@ export default {
     },
 
     toggleTagFilter(tag) {
-      const normalizedTag = this.normalizeTag(tag)
-      const index = this.selectedTags.findIndex(t => this.normalizeTag(t) === normalizedTag)
+      const index = this.selectedTags.indexOf(tag)
       if (index === -1) {
         this.selectedTags.push(tag)
       } else {
-        this.selectedTags.splice(index, 1)
+        // Only remove if clicking the exact same tag
+        if (this.selectedTags[index] === tag) {
+          this.selectedTags.splice(index, 1)
+        }
       }
     },
 
