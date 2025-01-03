@@ -47,15 +47,11 @@ jobs:
           [vars]
           OPENAI_API_KEY = \"${{ secrets.OPENAI_API_KEY }}\"
 
-          [env]
-          [env.development]
-          ENVIRONMENT = \"development\"
-          kv_namespaces = [
-              { binding = \"RSS_CACHE\", id = \"${{ secrets.RSS_CACHE_KV_ID_DEV }}\" }
-          ]
-
           [env.production]
           ENVIRONMENT = \"production\"
+          vars = {
+            OPENAI_API_KEY = \"${{ secrets.OPENAI_API_KEY }}\"
+          }
           kv_namespaces = [
               { binding = \"RSS_CACHE\", id = \"${{ secrets.RSS_CACHE_KV_ID_PROD }}\" }
           ]""" > wrangler.toml
