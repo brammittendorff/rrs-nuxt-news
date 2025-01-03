@@ -50,7 +50,7 @@ jobs:
           [env.production]
           ENVIRONMENT = \"production\"
           vars = {
-            OPENAI_API_KEY = \"${{ secrets.OPENAI_API_KEY }}\"
+              OPENAI_API_KEY = \"${{ secrets.OPENAI_API_KEY }}\"
           }
           kv_namespaces = [
               { binding = \"RSS_CACHE\", id = \"${{ secrets.RSS_CACHE_KV_ID_PROD }}\" }
