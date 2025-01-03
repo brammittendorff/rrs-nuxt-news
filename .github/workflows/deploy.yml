@@ -35,26 +35,24 @@ jobs:
           echo """name = \"news-worker\"
           main = \"worker/index.js\"
           compatibility_date = \"2024-01-01\"
-
+      
           workers_dev = true
           pages_build_output_dir = \".output/public\"
-
+      
           # Default environment (Common for all environments)
           kv_namespaces = [
               { binding = \"RSS_CACHE\", id = \"${{ secrets.RSS_CACHE_KV_ID_DEFAULT }}\" }
           ]
-
+      
           [vars]
           OPENAI_API_KEY = \"${{ secrets.OPENAI_API_KEY }}\"
-
+      
           [env.production]
           ENVIRONMENT = \"production\"
-          vars = {
-              OPENAI_API_KEY = \"${{ secrets.OPENAI_API_KEY }}\"
-          }
           kv_namespaces = [
               { binding = \"RSS_CACHE\", id = \"${{ secrets.RSS_CACHE_KV_ID_PROD }}\" }
-          ]""" > wrangler.toml
+          ]
+          vars.OPENAI_API_KEY = \"${{ secrets.OPENAI_API_KEY }}\"""" > wrangler.toml
 
       - name: Deploy Worker
         run: npm run deploy:worker
