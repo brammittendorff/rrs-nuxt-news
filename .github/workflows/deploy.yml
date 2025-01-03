@@ -93,10 +93,19 @@ jobs:
       - name: Create wrangler.toml for Pages
         run: |
           cat <<EOF > wrangler.toml
-          name = "news-worker"
+          name = "news-pages"
           compatibility_date = "2024-01-01"
 
           pages_build_output_dir = ".output/public"
+
+          [vars]
+          CLOUDFLARE_ACCOUNT_ID = "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          CLOUDFLARE_API_TOKEN = "${{ secrets.CLOUDFLARE_API_TOKEN }}"
+
+          [env.production]
+          ENVIRONMENT = "production"
+          vars.CLOUDFLARE_ACCOUNT_ID = "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          vars.CLOUDFLARE_API_TOKEN = "${{ secrets.CLOUDFLARE_API_TOKEN }}"
           EOF
 
       - name: Deploy to Cloudflare Pages
