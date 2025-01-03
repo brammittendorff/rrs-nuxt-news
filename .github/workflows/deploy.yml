@@ -25,28 +25,36 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build site
+        run: npm run generate
+        env:
+          NODE_ENV: production
+          NUXT_PUBLIC_PROXY_URL: https://news-worker.news-worker.workers.dev/rss
+
       - name: Create wrangler.toml for Worker
         run: |
-          echo """name = \"news-worker\"
-          main = \"worker/index.js\"
-          compatibility_date = \"2024-01-01\"
+          cat <<EOF > wrangler.toml
+          name = "news-worker"
+          main = "worker/index.js"
+          compatibility_date = "2024-01-01"
 
           workers_dev = true
 
           # Default environment (Common for all environments)
           kv_namespaces = [
-              { binding = \"RSS_CACHE\", id = \"${{ secrets.RSS_CACHE_KV_ID_DEFAULT }}\" }
+              { binding = "RSS_CACHE", id = "${{ secrets.RSS_CACHE_KV_ID_DEFAULT }}" }
           ]
 
           [vars]
-          OPENAI_API_KEY = \"${{ secrets.OPENAI_API_KEY }}\"
+          OPENAI_API_KEY = "${{ secrets.OPENAI_API_KEY }}"
 
           [env.production]
-          ENVIRONMENT = \"production\"
+          ENVIRONMENT = "production"
           kv_namespaces = [
-              { binding = \"RSS_CACHE\", id = \"${{ secrets.RSS_CACHE_KV_ID_PROD }}\" }
+              { binding = "RSS_CACHE", id = "${{ secrets.RSS_CACHE_KV_ID_PROD }}" }
           ]
-          vars.OPENAI_API_KEY = \"${{ secrets.OPENAI_API_KEY }}\""" > wrangler.toml
+          vars.OPENAI_API_KEY = "${{ secrets.OPENAI_API_KEY }}"
+          EOF
 
       - name: Deploy Worker
         run: npm run deploy:worker
@@ -84,10 +92,12 @@ jobs:
 
       - name: Create wrangler.toml for Pages
         run: |
-          echo """name = \"news-pages\"
-          compatibility_date = \"2024-01-01\"
+          cat <<EOF > wrangler.toml
+          name = "news-pages"
+          compatibility_date = "2024-01-01"
 
-          pages_build_output_dir = \".output/public\""" > wrangler.toml
+          pages_build_output_dir = ".output/public"
+          EOF
 
       - name: Deploy to Cloudflare Pages
         run: npm run deploy:pages
