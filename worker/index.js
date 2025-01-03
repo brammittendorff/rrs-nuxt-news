@@ -232,123 +232,120 @@ function mapTagsToSubcategories(tags, tagCategories) {
 async function processTagsAndCache(items, feedUrl, env) {
     console.log("[Backend] Starting processTagsAndCache for feed:", feedUrl);
 
-    // Array to store updated items
-    const updatedItems = await Promise.all(
-        items.map(async (item) => {
-            const itemHash = await sha256(`${item.title}${item.description}`);
-            const tagCacheKey = `tags:${itemHash}`;
+    const updatedItems = [];
+    const untaggedItems = [];
 
-            // Check if tags are already cached
-            const cachedTags = await env.RSS_CACHE.get(tagCacheKey);
-            if (cachedTags) {
-                const cachedData = JSON.parse(cachedTags);
-                console.log(`[Backend] Cached tags for "${item.title}":`, cachedData.tags);
-                
-                // Return item with cached tags and subcategories
-                return {
-                    ...item,
-                    tags: cachedData.tags || [],
-                    subcategories: cachedData.subcategories || {},
-                };
-            }
+    // Check cache and prepare untagged items
+    for (const item of items) {
+        const itemHash = await sha256(`${item.title}${item.description}`);
+        const tagCacheKey = `tags:${itemHash}`;
 
-            // If no cache, return item with empty tags (to be processed later)
-            console.log(`[Backend] No cached tags for "${item.title}". Processing...`);
-            return {
+        const cachedTags = await env.RSS_CACHE.get(tagCacheKey);
+        if (cachedTags) {
+            const cachedData = JSON.parse(cachedTags);
+            console.log(`[Backend] Cached tags for "${item.title}":`, cachedData.tags);
+
+            updatedItems.push({
                 ...item,
-                tags: [],
-                subcategories: {},
-            };
-        })
-    );
-
-    // Process only untagged items
-    const untaggedItems = updatedItems.filter((item) => item.tags.length === 0);
-    for (const item of untaggedItems) {
-        try {
-            // Generate tags using OpenAI API
-            const tagCategoriesString = Object.values(TAG_CATEGORIES).flat().join(", ");
-            const response = await fetch("https://api.openai.com/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    model: "gpt-4o-mini",
-                    messages: [
-                        {
-                            role: "system",
-                            content: `Generate up to 12 relevant tags (1-2 words each) for the article based on its title and description. Focus exclusively on these subcategories: ${tagCategoriesString}. Return tags as comma-separated values. Do not include empty or invalid tags.`,
-                        },
-                        {
-                            role: "user",
-                            content: `Title: ${item.title}\n\nDescription: ${item.description}`,
-                        },
-                    ],
-                    max_tokens: 300,
-                }),
+                tags: cachedData.tags || [],
+                subcategories: cachedData.subcategories || {},
             });
-
-            if (!response.ok) {
-                console.error(`[Backend] OpenAI API error for item: ${item.title}`);
-                continue;
-            }
-
-            const data = await response.json();
-            const rawTags = data.choices[0]?.message?.content.trim() || '';
-            let tags = filterTags(rawTags.split(",").map((tag) => tag.trim()));
-
-            // Fallback to keyword matching if less than 2 tags are generated
-            if (tags.length < 2) {
-                console.warn(`[Backend] Insufficient tags generated for "${item.title}". Falling back to keyword matching.`);
-                tags = generateFallbackTags(item.title + " " + item.description, TAG_CATEGORIES, 12);
-                console.log(`[Backend] Fallback tags generated for "${item.title}":`, tags);
-            }
-
-            // Ensure tags meet constraints
-            tags = tags.filter((tag) => tag && tag.trim().length > 0).slice(0, 12);
-
-            // Map tags to subcategories
-            const subcategories = mapTagsToSubcategories(tags, TAG_CATEGORIES);
-
-            console.log(`[Backend] Generated tags for "${item.title}":`, tags);
-            console.log(`[Backend] Subcategories for "${item.title}":`, subcategories);
-
-            // Cache the tags and subcategories
-            if (tags.length > 0) {
-                await env.RSS_CACHE.put(
-                    `tags:${await sha256(`${item.title}${item.description}`)}`,
-                    JSON.stringify({
-                        tags: tags,
-                        subcategories: subcategories,
-                        timestamp: Date.now(),
-                    }),
-                    { expirationTtl: 86400 } // Cache for 24 hours
-                );
-            }
-
-            // Update item with tags and subcategories
-            item.tags = tags;
-            item.subcategories = subcategories;
-
-            // Avoid rate limits
-            await new Promise((resolve) => setTimeout(resolve, 500));
-        } catch (error) {
-            console.error(`[Backend] Error tagging item: ${item.title}`, error);
+        } else {
+            untaggedItems.push(item);
         }
     }
 
-    // Update the feed cache with all processed items
-    await env.RSS_CACHE.put(
-        `feed:${feedUrl}`,
-        JSON.stringify(updatedItems),
-        { expirationTtl: 3600 } // Cache feed for 1 hour
-    );
+    if (untaggedItems.length === 0) {
+        console.log("[Backend] No untagged items to process.");
+        return updatedItems;
+    }
 
-    console.log("[Backend] Processed tags and updated cache for feed:", feedUrl);
-    return updatedItems;
+    console.log(`[Backend] Processing ${untaggedItems.length} untagged items.`);
+
+    try {
+        // Prepare batch payload for OpenAI
+        const payload = untaggedItems.map(item => ({
+            title: item.title,
+            description: item.description,
+        }));
+
+        const tagCategoriesString = Object.values(TAG_CATEGORIES).flat().join(", ");
+
+        // Send bulk request to OpenAI
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model: "gpt-4o-mini",
+                messages: [
+                    {
+                        role: "system",
+                        content: `Generate up to 12 relevant tags (1-2 words each) for each article based on its title and description. Focus exclusively on these subcategories: ${tagCategoriesString}. Return tags as JSON with an array of objects where each object contains "title", "tags", and "subcategories".`,
+                    },
+                    {
+                        role: "user",
+                        content: JSON.stringify(payload),
+                    },
+                ],
+                max_tokens: 1000,
+            }),
+        });
+
+        if (!response.ok) {
+            console.error(`[Backend] OpenAI API error: ${response.statusText}`);
+            throw new Error("Failed to fetch tags from OpenAI API");
+        }
+
+        const data = await response.json();
+        const generatedTags = JSON.parse(data.choices[0]?.message?.content || "[]");
+
+        // Update items with tags and subcategories
+        for (const item of untaggedItems) {
+            const generatedItem = generatedTags.find(
+                (genItem) => genItem.title === item.title
+            );
+
+            if (generatedItem) {
+                const tags = filterTags(generatedItem.tags || []);
+                const subcategories = mapTagsToSubcategories(tags, TAG_CATEGORIES);
+
+                // Cache the tags and subcategories
+                const itemHash = await sha256(`${item.title}${item.description}`);
+                await env.RSS_CACHE.put(
+                    `tags:${itemHash}`,
+                    JSON.stringify({ tags, subcategories, timestamp: Date.now() }),
+                    { expirationTtl: 86400 } // Cache for 24 hours
+                );
+
+                updatedItems.push({
+                    ...item,
+                    tags,
+                    subcategories,
+                });
+            } else {
+                updatedItems.push({ ...item, tags: [], subcategories: {} });
+            }
+        }
+
+        // Update the feed cache
+        await env.RSS_CACHE.put(
+            `feed:${feedUrl}`,
+            JSON.stringify(updatedItems),
+            { expirationTtl: 3600 } // Cache feed for 1 hour
+        );
+
+        console.log("[Backend] Processed tags and updated cache for feed:", feedUrl);
+        return updatedItems;
+
+    } catch (error) {
+        console.error("[Backend] Error processing tags:", error);
+        return items; // Return original items in case of an error
+    }
 }
+
 
 /**
  * Generates fallback tags based on keywords from TAG_CATEGORIES.

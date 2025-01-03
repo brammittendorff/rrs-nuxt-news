@@ -450,9 +450,23 @@ export default {
       this.error = null;
       this.rssItems = [];
       try {
-        const feedPromises = this.sources.map(feed => this.fetchFeed(feed));
-        const results = await Promise.all(feedPromises);
-        this.rssItems = results.flat();
+        const batchSize = 2; // Adjust based on number of sources and network speed
+        for (let i = 0; i < this.sources.length; i += batchSize) {
+          const batch = this.sources.slice(i, i + batchSize);
+          const feedPromises = batch.map(feed => this.fetchFeed(feed));
+          const results = await Promise.allSettled(feedPromises);
+
+          // Add successful results
+          results.forEach(result => {
+            if (result.status === 'fulfilled') {
+              this.rssItems.push(...result.value);
+            } else {
+              console.error('Error fetching feed:', result.reason);
+            }
+          });
+
+          this.$forceUpdate(); // Update UI with partial results
+        }
       } catch (err) {
         this.error = `Error fetching feeds: ${err.message}`;
         console.error('Error fetching feeds:', err);

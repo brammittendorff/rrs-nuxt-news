@@ -30,20 +30,46 @@ jobs:
           NODE_ENV: production
           NUXT_PUBLIC_PROXY_URL: https://news-worker.news-worker.workers.dev/rss
 
+      - name: Create wrangler.toml
+        run: |
+          echo """name = \"news-worker\"
+          main = \"worker/index.js\"
+          compatibility_date = \"2024-01-01\"
+
+          workers_dev = true
+
+          # Default environment (Common for all environments)
+          kv_namespaces = [
+              { binding = \"RSS_CACHE\", id = \"${{ secrets.RSS_CACHE_KV_ID_DEFAULT }}\" }
+          ]
+
+          [vars]
+          OPENAI_API_KEY = \"${{ secrets.OPENAI_API_KEY }}\"
+
+          [env]
+          [env.development]
+          ENVIRONMENT = \"development\"
+          kv_namespaces = [
+              { binding = \"RSS_CACHE\", id = \"${{ secrets.RSS_CACHE_KV_ID_DEV }}\" }
+          ]
+
+          [env.production]
+          ENVIRONMENT = \"production\"
+          kv_namespaces = [
+              { binding = \"RSS_CACHE\", id = \"${{ secrets.RSS_CACHE_KV_ID_PROD }}\" }
+          ]""" > wrangler.toml
+
       - name: Deploy Worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: deploy --env production
+        run: npm run deploy:worker
         env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           NODE_ENV: production
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: pages deploy .output/public --project-name=news-nerd-host --branch=main
+        run: npm run deploy:pages
         env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           NODE_ENV: production
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
