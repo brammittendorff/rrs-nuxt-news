@@ -93,7 +93,7 @@ jobs:
       - name: Create wrangler.toml for Pages
         run: |
           cat <<EOF > wrangler.toml
-          name = "news-pages"
+          name = "news-worker"
           compatibility_date = "2024-01-01"
 
           pages_build_output_dir = ".output/public"
